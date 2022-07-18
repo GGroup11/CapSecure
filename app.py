@@ -1,40 +1,31 @@
-import numpy as np
-from flask import Flask, request, jsonify, render_template, url_for
-import pickle
+from flask import Flask,render_template,url_for, request, redirect
+from flask_bootstrap import Bootstrap
 
+import os
+import inference
 
 app = Flask(__name__)
-model = pickle.load(open('randomForestRegressor.pkl','rb'))
+Bootstrap(app)
 
+"""
+Routes
+"""
 
-@app.route('/')
-def home():
-    #return 'Hello World'
-    return render_template('home.html')
-    #return render_template('index.html')
+@app.route('/',methods = ['GET','POST'])
+def index():
+    if request.method == 'POST':
+        uploaded_file = request.files['file']
+        if uploaded_file.filename != '':
+            image_path = os.path.join('static',uploaded_file.filename)
+            uploaded_file.save(image_path)
+            class_name = inference.get_prediction(image_path)
+            print('Class Name=', class_name)
+            result = {
+                "class_name" : class_name,
+                "image_path" : image_path
+            }
+            return render_template('show.html',result = result)
+    return render_template('index.html')
 
-@app.route('/predict',methods = ['POST'])
-def predict():
-    int_features = [float(x) for x in request.form.values()]
-    final_features = [np.array(int_features)]
-    prediction = model.predict(final_features)
-    print(prediction[0])
-
-    #output = round(prediction[0], 2)
-    return render_template('home.html', prediction_text="AQI for Jaipur {}".format(prediction[0]))
-
-@app.route('/predict_api',methods=['POST'])
-def predict_api():
-    '''
-    For direct API calls trought request
-    '''
-    data = request.get_json(force=True)
-    prediction = model.predict([np.array(list(data.values()))])
-
-    output = prediction[0]
-    return jsonify(output)
-
-
-
-if __name__ == '__main__':
-    app.run(debug=True)
+if (__name__) == '__main__':
+  app.run(debug = True)
